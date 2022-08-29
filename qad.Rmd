@@ -1,0 +1,1388 @@
+---
+title: Quantile absolute deviation
+author: |
+  Andrey Akinshin  
+  Huawei Research, andrey.akinshin@gmail.com
+abstract: |
+  The median absolute deviation (MAD) is a popular robust measure of statistical dispersion.
+  However, when it is applied to non-parametric distributions (especially multimodal, discrete, or heavy-tailed),
+    lots of statistical inference issues arise.
+  Even when it is applied to distributions with slight deviations from normality and these issues are not actual,
+    the Gaussian efficiency of the MAD is only 37% which is not always enough.
+  
+  In this paper, we introduce the *quantile absolute deviation* (QAD) as a generalization of the MAD.
+  This measure of dispersion provides a flexible approach to analyzing properties of non-parametric distributions.
+  It also allows controlling the trade-off between robustness and statistical efficiency.
+  We use the trimmed Harrell-Davis median estimator based on the highest density interval of the given width
+    as a complimentary median estimator that gives
+    increased finite-sample Gaussian efficiency compared to the sample median
+    and a breakdown point matched to the QAD.
+
+  As a rule of thumb, we suggest using two new measures of dispersion
+    called the *standard QAD* and the *optimal QAD*.
+  They give 54% and 65% of Gaussian efficiency having breakdown points of 32% and 14% respectively.
+
+  **Keywords:** statistical dispersion, median absolute deviation, robustness, statistical efficiency.
+author-meta: Andrey Akinshin
+lang: en-US
+bibliography: references.bib
+biblio-style: alphabetic
+biblatexoptions: [sorting=anyt]
+link-citations: true
+colorlinks: true
+linkcolor: linkcolor
+citecolor: citecolor
+urlcolor: urlcolor
+output:
+  bookdown::pdf_document2:
+    extra_dependencies: ["amsmath", "float", "csquotes"]
+    citation_package: biblatex
+    number_sections: true
+    keep_tex: false
+    toc: false
+    includes:
+      in_header: ["tex/preamble.tex", "tex/definitions.tex" ]
+      before_body: "tex/before_body.tex"
+---
+
+```{r setup, include=FALSE}
+source("main.R", local = knitr::knit_global())
+```
+
+# Introduction
+
+The *median absolute deviation around the median* ($\MAD$) is a widely used measure of statistical dispersion
+  which is often used as a robust alternative to the standard deviation.
+For a sample $X = \{ X_1, X_2, \ldots, X_n \}$ of i.i.d. random variables, it is given by
+
+$$
+\MAD(X) = C \cdot \median(|X - \median(X)|),
+$$
+
+  where $C$ is a scale constant that can be used to make the $\MAD$ Fisher-consistent ([@fisher1922])
+  for the standard deviation under the normal distribution.
+One of the first notes about the $\MAD$ can be found in [@hampel1974, p388] where it is attributed to Gauss:
+  "It was, in fact, mentioned briefly by Gauss ([@gauss1816]), who noted its simplicity,
+  but with the same breath, dismissed it because of
+  its low asymptotic efficiency of about 40 percent for strictly normal data (cf. also [@stigler1973a])."
+Despite the remark about poor statistical efficiency, the $\MAD$ has become a popular robust scale estimator
+  due to its high breakdown point of $50\%$.
+It is discussed as a robust measure of dispersion in various statistical textbooks including
+  [@wilcox2016; @huber2009; @maronna2019; @mosteller1977; @hampel1986; @jureckova2019].
+
+The actual asymptotic Gaussian efficiency of the $\MAD$ is only $36.75\%$.
+Using adjusted values of $C$, we can make the $\MAD$ consistent with the standard deviation for finite samples.
+The corresponding bias-correction factors can be found in [@park2020].
+Its finite-sample Gaussian efficiency is a little bit higher than its asymptotic value,
+  but the difference is not dramatic (when the sample size is larger than $14$, the efficiency is below $40\%$).
+There are various ways to improve efficiency.
+For example, we can consider an alternative median estimator.
+Conventionally, the $\MAD$ is based on the sample median
+  (when $n$ is odd, the median is the middle order statistic;
+   when $n$ is even, the median is the arithmetic average of the two middle order statistics)
+   which is not the most robust median estimator.
+It can be replaced by the Harrell-Davis median estimator (see [@harrell1982])
+  which is asymptotically consistent with the sample median (see [@yoshizawa1985]).
+Strictly speaking, this estimator is not robust since it is based on a weighted sum of all order statistics.
+However, small and large order statistics get negligible weight coefficients
+  which make this approach practically acceptable in the case of non-extreme outliers.
+In order to increase robustness,
+  we can also consider the trimmed modification of the Harrell-Davis median estimator
+  which has a higher breakdown point and slightly lower efficiency (see [@akinshin2022thdqe]).
+The finite-sample bias correction factors for both approaches are given in [@akinshin2022madfactors].
+
+There is also a plethora of various alternatives to the $\MAD$ like
+  the interquartile and interdecile ranges,
+  the trimmed standard deviation (see [@lax1985]),
+  the Winsorized standard deviation (see [@wilcox2016]),
+  the Rousseeuw and Croux $S_n$ and $Q_n$ scale estimators (see [@rousseeuw1993]),
+  the biweight midvariance (see [@lax1985]),
+  the Shamos estimator (see [@shamos1976]),
+  and others (e.g., see [@daniell1920]).
+Each estimator has its own properties including breakdown point, statistical efficiency,
+  componential efficiency, influence function (see [@hampel1974]), etc.
+
+In this paper, we build a generalization of the $\MAD$
+  that we call the *quantile absolute deviation around the median* ($\QAD$).
+It is defined as follows:
+
+$$
+\QAD(X, p) = K \cdot \Q(|X - \median(X)|, p),
+$$
+
+  where $\Q(\cdot, p)$ is a quantile estimator,
+  $K$ is a scale constant,
+  $p \in [0; 1]$.
+The parameter $p$ allows customizing the trade-off between statistical efficiency and robustness.
+The $\MAD$ is a special case of the $\QAD$: $\MAD(X) = \QAD(X, 0.5)$.
+When we increase $p$ from $0.5$ to $1.0$, we trade robustness (the breakdown point becomes $1-p$)
+  for increased efficiency.
+
+The $\MAD$ is often used together with the $\median$
+  since the interval from $\median(X)-\MAD(X)$ to $\median(X)+\MAD(X)$ covers $50\%$ of the distribution.
+When we use $\QAD$, the interval from $\median(X)-\QAD(X, p)$ to $\median(X)+\QAD(X, p)$
+  covers $p \cdot 100\%$ of the distribution.
+Thus, we have flexibility in describing distribution properties.
+Since the breakdown point of $\QAD(X, p)$ is $1-p$,
+  we can use an alternative median estimator with the same breakdown point
+  to obtain better efficiency for the median estimations.
+We suggest using the trimmed Harrell-Davis median estimator
+  based on the highest density interval of size $p$ (see [@akinshin2022thdqe]).
+
+In practice, the breakdown point of $50\%$ is not always required.
+For example, in [@hampel1986, p.26--28],
+  it is stated that we can expect about $1\text{--}10\%$ of gross errors in real data sets.
+Therefore, based on the knowledge of the data source, one can use high values of $p$ up to $0.8\text{--}0.9$.
+In this paper, we discuss two rules of thumb for choosing the value of $p$.
+The first one suggests using $p=\Phi(1)-\Phi(-1)\approx 68.27\%$ (the corresponding Gaussian efficiency is $54.06\%$).
+The intuition behind this value is that the corresponding interval
+  $[\median(X)-\QAD(X, p); \median(X)+\QAD(X, p)]$ converges to $[\mu-\sigma; \mu+\sigma]$ under normality.
+The second one is $p \approx 86.17\%$
+  since it is the point at which $\QAD$ achieves its highest Gaussian efficiency of $65.22\%$.
+We denote them by the standard $\QAD$ ($\SQAD$) and the optimal $\QAD$ ($\OQAD$).
+The corresponding median estimators are also discussed.
+
+While the $\MAD$, the $\SQAD$, and the $\OQAD$ are reliable and robust measures of statistical dispersion
+  for unimodal continuous light-tailed distributions with slight deviations from normality,
+  they can be misleading in the non-parametric case.
+Discretization may lead to zero dispersion values,
+  multimodality may lead to unstable estimations,
+  heavy-tailedness may lead to violated assumptions typical for the normal model.
+In order to get a broad perspective of dispersion properties of the underlying non-parametric distribution,
+  we can consider the $\QAD(X, p)$ function for all $p \in [0; 1]$.
+
+In this paper, we discuss various aspects of using the $\QAD$ and its complimentary median estimator:
+  robustness, statistical efficiency, unbiasedness, and possible issues with non-parametric distributions.
+
+The paper is organized as follows.
+In Section\ \@ref(sec:mad),
+  we revise the basic properties of the $\MAD$
+  and discuss caveats of using the $\MAD$ with non-parametric distributions.
+In Section\ \@ref(sec:qad),
+  we discuss the concept of the $\QAD$,
+  calculate the asymptotic consistency constants and Gaussian efficiency,
+  and introduce the $\SQAD$ and the $\OQAD$.
+In Section\ \@ref(sec:thdme),
+  we consider a complimentary median estimator for $\QAD$ which has the same breakdown point
+  and discuss its special cases for the $\SQAD$ and the $\OQAD$.
+In Section\ \@ref(sec:sim), we perform a series of numerical simulations
+  to get the values of the finite-sample consistency constant values
+  and Gaussian efficiency values of the presented estimators.
+In Section\ \@ref(sec:summary), we summarize all the results.
+In Appendix\ \@ref(sec:refimpl), we provide a reference R implementation of the discussed approach.
+
+\clearpage
+
+# Median absolute deviation {#sec:mad}
+
+For a sample $X = \{ X_1, X_2, \ldots, X_n \}$ of i.i.d. random variables,
+  the *median absolute deviation* is given by
+
+$$
+\MAD(X) = \median(|X - \median(X)|).
+$$
+
+In order to make it an unbiased Fisher-consistent estimator for the standard deviation ($\SD$),
+  we should introduce a consistency constant $C_n$:
+
+$$
+\MAD_n(X) = C_n \cdot \median(|X - \median(X)|).
+$$
+
+The asymptotic value of $C_n$ is well-known: $C_{\infty} = 1 / \Phi^{-1}(0.75) \approx 1.4826$
+  where $\Phi^{-1}$ is the quantile function of the standard normal distribution
+  (a detailed proof can be found in [@akinshin2022madfactors, Section 2.1]).
+The finite-sample bias-correction factors can be found in [@park2020].
+
+One of the most popular measures of estimator robustness is the breakdown point.
+It describes the portion of the distribution that can be replaced by arbitrary large values
+  without corrupting the obtained estimations.
+The $\MAD$ is highly robust, its breakdown point is $50\%$
+  which is the highest possible value for a scale estimator (see [@rousseeuw1987, p14]).
+
+Its asymptotic relative statistical efficiency to the standard deviation under normality (*Gaussian efficiency*)
+  is $36.75\%$ (the proof is in Section\ \@ref(sec:qad-age)).
+However, for finite samples, the statistical efficiency is higher as shown in Figure\ \@ref(fig:mad-efficiency).
+The raw values are presented in Table\ \@ref(tab:tab-scale-efficiency).
+
+```{r mad-efficiency, fig.cap="Finite-sample Gaussian efficiency of the median absolute deviation."}
+figure_mad_efficiency()
+```
+
+When researchers use the $\MAD$ as a robust replacement for the standard deviation,
+  they typically use assumptions that are valid only for the normal distribution
+  and some unimodal continuous light-tailed distributions with slight deviations from normality.
+Unfortunately, these assumptions can be violated
+  when the considered distribution is multimodal, discrete, heavy-tailed, or has high deviations from normality.
+In this section, we discuss the caveats of using the $\MAD$ with non-parametric distributions.
+
+\clearpage
+
+## MAD and multimodal distributions {#sec:mad_multimodal}
+
+When non-robust estimators are used, a single corrupted element can easily distort the estimation.
+A transition towards robust approaches brings a lot of benefits in terms of stability:
+  a single altered element cannot introduce an extreme change in the estimation value.
+Having this knowledge, many researchers typically expect that robust estimations would fit a narrow range of values
+  from an approximately normal sampling distribution.
+Therefore, they can omit the phase of exploring the distribution of estimations
+  and draw conclusions based on a single trial assuming
+  that all possible estimations are close enough to each other.
+However, while robust estimators indeed provide a decent defense against gross errors,
+  they still can have a wide range of possible values.
+The corresponding sampling distribution can also have heavy deviations from normality.
+
+One of the most severe problems arises in the multimodal case.
+Let us consider a trimodal distribution that is shown in Figure\ \@ref(fig:mad-multimodal)a.
+This distribution has three non-intersecting intervals as shown in Table\ \@ref(tab:mad-trimodal).
+
+Table: (\#tab:mad-trimodal) Three modes of the distribution from Figure\ \@ref(fig:mad-multimodal)a.
+
+| Interval | Portion |
+|---------:|--------:|
+| $[0;1]$  | $25\%$  |
+| $[4;5]$  | $50\%$  |
+| $[8;9]$  | $25\%$  |
+
+While the distribution has an unambiguously defined median $M = 4.5$,
+  its quantile function of the absolute deviations around the median ($|X - \median(X)|$)
+  has a discontinuity at 0.5.
+Therefore, we cannot unambiguously define the $\MAD$ value.
+Indeed, the $[M-\MAD; M+\MAD]$ interval should cover exactly $50\%$ of the distribution.
+In the considered case, there are multiple ways to define such an interval.
+The narrowest and the widest suitable intervals are $[4;5]$ to $[1;8]$ respectively.
+
+Now we explore the practical implications of working with such a distribution.
+Let us take $1\,000$ random samples of size $100$ from this distribution,
+  estimate the $\MAD$ value for each sample,
+  and build a new distribution based on the obtained estimations.
+The density plot of the observed sampling distribution is presented in Figure\ \@ref(fig:mad-multimodal)b
+  (we use the kernel density estimation with the normal kernel and
+  the Sheather & Jones method to select the bandwidth, see [@sheather1991]).
+
+As we can see, the sampling distribution of the $\MAD$ is also trimodal.
+In the general case, the distance between these modes has the same magnitude as
+  the gap around the $0.5^\textrm{th}$ quantile of $|X - \median(X)|$.
+
+This problem can be viewed from another perspective.
+For a distribution with probability density function $f$ and the true median value $M$,
+  the distribution of the sample median estimations is asymptotically normal
+  (according to [@stigler1973b] it was firstly derived by Laplace)
+  with mean $M$ and variance
+
+$$
+\frac{1}{4nf(M)^2}.
+$$
+
+As we can see, the variance equation requires $f(M)>0$ which is not always true in the general case.
+Therefore, if we have discontinuities around the median of $X$ or $|X - \median(X)|$,
+  the sampling distribution of the $\MAD$ may have a multimodal form with a wide range of values.
+
+Even if $f(M)>0$, the sampling distribution of the median is only *asymptotically* normal,
+  which means that we can expect noticeable deviations from normality when the sample size is small (see [@rider1960]).
+
+Thus, despite the high robustness of the $\MAD$,
+  the obtained estimations can significantly vary between samples
+  and we cannot speculate on the form of the corresponding sampling distributions based on a few samples.
+
+\clearpage
+
+```{r mad-multimodal, fig.cap="A trimodal distribution and the corresponding sampling distribution of the MAD.", fig.height = 8.5}
+figure_mad_multimodal()
+```
+
+\clearpage
+
+## MAD and discrete distributions {#sec:mad_discrete}
+
+When we work with continuous distributions, we typically assume that the dispersion value is strictly positive.
+Thanks to this property, dispersion measures are often used as denominators in various statistical equations
+  (e.g., in the standard score, in effect size measures like the Cohen's d,
+  in null hypothesis significance tests like the Student's t-test, and so forth).
+In theory, the probability of obtaining tied values from a continuous distribution is zero
+  so that we should not expect division by zero.
+In practice, tied values can arise in the continuous case due to the limited resolution of the measurement device.
+Of course, we can also expect tied values in samples from
+  discrete distributions (e.g., Bernoulli distribution or Binomial distribution)
+  or mixtures of discrete and continuous distributions (e.g., the rectified Gaussian distribution, see [@socci1997]).
+
+As an example of a discrete distribution, let us consider the Poisson distribution $\Pois(\lambda)$.
+Its probability mass function is defined by $p(k)=\lambda^k e^{-\lambda} / k!$.
+It is easy to see that when $\lambda < \lambda_0 = -\ln(0.5) \approx 0.6931$, we have $p(0) > 0.5$
+  (e.g., in Figure\ \@ref(fig:mad-discrete), $\Pois(0.6)$ is presented; $p(0) \approx 0.55$).
+In this case, more than half of the distribution elements are equal to zero, which gives a zero value of the $\MAD$.
+Such a situation can become a severe issue in statistical inference.
+
+```{r mad-discrete, fig.cap="Probability mass function of the Poisson distribution for $\\lambda=0.6$."}
+figure_mad_discrete()
+```
+
+Similarly to the breakdown point, we can introduce the *degenerate point* of a dispersion estimator that describes
+  the minimum portion of the sample that should be replaced by zeros to get zero estimation.
+For example,
+  the asymptotic degenerate points of the $\MAD$, the interquartile range,
+  the interdecile range, and the standard deviation are
+  $50\%$, $50\%$, $80\%$, and $100\%$ respectively.
+
+In practice, the dispersion estimator can be redefined by introducing an artificial lower bound
+  so that it never becomes zero.
+For example, we can consider a modification of $\MAD$ defined by $\MAD^*(X) = \max(\MAD(X), \MAD_{\min})$,
+  where $\MAD_{\min} > 0$.
+In this case, $\MAD_{\min}$ becomes the new "degenerate" value.
+We can correspondingly redefine the degenerate point so that it describes
+  the minimum portion of the sample that should be replaced by zeros to get the minimum possible estimation value.
+
+The degenerate point plays an important role when we choose a proper dispersion estimator for discrete distributions
+  or mixtures of discrete and continuous distributions
+  since it defines the domain in which considered estimators can be actually used.
+For example, if we work with the Poisson distribution $\Pois(\lambda)$, we need a dispersion estimator
+  with a degenerate point greater than $p(0) = e^{-\lambda}$.
+
+\clearpage
+
+## MAD and heavy-tailed distributions {#sec:mad_heavy}
+
+When we work the normal distribution $\mathcal{N}(\mu, \sigma^2)$, its structure can be described only by two parameters:
+  the mean $\mu$ and the standard deviation $\sigma$.
+This representation is powerful
+  because we can instantly get various insights about the distribution based solely on these two values.
+A widely used example of assumptions related to the normal model is the 68--95--99.7 rule.
+It says that intervals $[\mu-\sigma;\mu+\sigma]$, $[\mu-2\sigma;\mu+2\sigma]$, and $[\mu-3\sigma;\mu+3\sigma]$
+  cover $68\%$, $95\%$, and $99.7\%$ of the normal distribution respectively.
+This rule is linked with the three-sigma rule of thumb that implies that the interval $[\mu-3\sigma;\mu+3\sigma]$
+  covers almost all the distribution values.
+While this empirical rule is applicable to numerous unimodal continuous light-tailed distributions,
+  it can be easily violated in the case of heavy-tailed distributions.
+
+Let us consider the $\Pareto$ distribution which is a commonly used example of a heavy-tailed distribution.
+Its true median value is $M = 2$ and the true median absolute deviation value is $\MAD \approx 0.83$.
+The corresponding density plot is presented in Figure\ \@ref(fig:mad-heavy).
+
+```{r mad-heavy, fig.cap="The density plot of the Pareto(1, 1) distribution."}
+figure_mad_heavy()
+```
+
+The variance of this distribution is infinite, therefore we cannot use the standard deviation as a measure of dispersion.
+However, let us check what would happen with the 68--95--99.7 rule if we try to apply it
+  using a scaled $\MAD$ as a standard deviation estimator.
+We consider intervals $[M-k \cdot \MAD; M+k \cdot \MAD]$ for
+  $k \in \{ 1, C_{\infty}, 2C_{\infty}, 3C_{\infty} \}$.
+The actual coverage values of all intervals are presented in Table\ \@ref(tab:mad-coverage).
+
+```{r mad-coverage}
+table_mad_coverage()
+```
+
+As we can see, a blind usage of the three-sigma rule in the heavy-tailed case can lead to misleading insights.
+In the above example, the interval $[M- 3C_{\infty} \cdot \MAD; M+ 3C_{\infty} \cdot \MAD]$
+  actually cover only $`r format(inline_pareto_3mad_coverage(), scientific=FALSE)`\%$ of the $\Pareto$ distribution instead of the typical $99.7\%$ for the normal one.
+
+\clearpage
+
+# Quantile absolute deviation {#sec:qad}
+
+Now we introduce a generalization of the $\MAD$
+  that we call the *quantile absolute deviation around the median* ($\QAD$).
+We define the $\QAD$ by
+
+$$
+\QAD(X, p) = \Q(|X - \median(X)|, p),
+$$
+
+  where $Q(\cdot, p)$ is a quantile estimator, $p$ is the order of the target quantile.
+In the scope of this paper,
+  we are using the Hyndman-Fan Type 7 quantile estimator (see [@hyndman1996])
+  which is the most popular traditional quantile estimator based on one or two order statistics
+  (it is used by default in R, Julia, NumPy, and Excel).
+It is given by
+
+$$
+Q(X, p) = X_{(\lfloor h \rfloor)}+(h-\lfloor h \rfloor)(X_{(\lceil h \rceil)}-X_{(\lfloor h \rfloor)}),
+\quad h = (n-1)p+1,
+$$
+
+where $\lfloor \cdot \rfloor$ and $\lceil \cdot \rceil$ are the floor and ceiling functions,
+  $X_{(i)}$ is the $i^\textrm{th}$ order statistic of $X$.
+It is easy to see that such an estimator is consistent with the sample median: $\Q(X, 0.5) = \median(X)$.
+Therefore, the $\MAD$ is a special case of $\QAD$:
+
+$$
+\MAD(X) = \median(|X-\median(X)|) = \Q(|X - \median(X, 0.5)|, 0.5) = \QAD(X, 0.5).
+$$
+
+While the interval
+
+$$
+[\median(X) - \MAD(X);\; \median(X) + \MAD(X)]
+$$
+
+covers $50\%$ of the distribution, the interval
+
+$$
+[\median(X) - \QAD(X,p);\; \median(X) + \QAD(X,p)]
+$$
+
+covers $p\cdot 100\%$ of the distribution.
+This property gives us a broader view of the distribution dispersion
+  via exploring the $\QAD(X, p)$ function for all $p \in [0; 1]$.
+Therefore, we can pick such a value of $p$ that helps to avoid $\MAD$-specific problems listed in the previous section.
+The parameter $p$ affects the statistical efficiency, the breakdown point (which equals $1-p$),
+  the degenerate point (which equals $p$), the influence function, and other properties of $\QAD(X, p)$.
+
+Now we will
+  explore examples of the $\QAD$ for different distributions (Section\ \@ref(sec:qad-ex)),
+  derive the asymptotic values of consistency constants (Section\ \@ref(sec:qad-cc))
+    and Gaussian efficiency (Section\ \@ref(sec:qad-age)),
+  and introduce the standard $\QAD$ (Section\ \@ref(sec:qad-sqad))
+    and the optimal $\QAD$ (Section\ \@ref(sec:qad-oqad)).
+
+\clearpage
+
+## Examples of the quantile absolute deviation functions {#sec:qad-ex}
+
+In order to get a better understanding of the $\QAD(X, p)$ function behavior,
+  we consider several examples of this function (Figure\ \@ref(fig:qad-functions)) for various distributions.
+
+For some of these distributions,
+  we derive the exact asymptotic equation for its quantile absolute deviation as follows.
+Let us denote the distribution cumulative distribution function (CDF) by $F$ and the true distribution median by $M$.
+For simplification, we denote the asymptotic value of $\QAD(X, p)$ by $v_p$:
+
+$$
+v_p = \lim_{n \to \infty} \E[\Q(|X-M|, p)].
+$$
+
+By the definition of quantiles, this can be rewritten as:
+
+$$
+\PR(|X_1 - M| < v_p) = p,
+$$
+
+which is the same as
+
+$$
+\PR(-v_p < X_1 - M < v_p) = p.
+$$
+
+Hence,
+
+$$
+\PR(M - v_p < X_1 < M + v_p) = p.
+$$
+
+This can be rewritten using the CDF:
+
+\begin{equation}
+F(M + v_p) - F(M - v_p) = p.
+\label{eq:qad-solve}
+\end{equation}
+
+The solution of this equation gives us the asymptotic expected value of $\QAD(X, p)$.
+
+We also consider the situation in which we have the minimum $x$ value $x_{\min}$ so that $F(x) = 0$ for $x \leq x_{\min}$.
+In this case, it is necessary to consider two cases: $M - v_p \leq x_{\min}$ and $M - v_p > x_{\min}$.
+The critical value $v_p^*$ is defined by $M-v_p^* = x_{\min}$, which gives us $v_p^* = M - x_{\min}$.
+The corresponding critical value $p^*$ can be derived from Equation\ \@ref(eq:qad-solve):
+
+\begin{equation}
+p^* = F(M + v_p^*) - F(M - v_p^*) = F(2M - x_{\min}) - F(x_{\min}) = F(2M - x_{\min}).
+\label{eq:qad-pstar}
+\end{equation}
+
+Once the critical value $p^*$ is obtained, we should consider cases $p \leq p^*$ and $p > p^*$ independently.
+For the case $p \leq p^*$, Equation\ \@ref(eq:qad-solve) should be used.
+For the case $p > p^*$, we can omit $F(M - v_p)$ since it is always zero so that we should solve
+
+\begin{equation}
+F(M + v_p) = p.
+\label{eq:qad-solve2}
+\end{equation}
+
+
+```{r qad-functions, fig.cap="QAD function for various distributions.", fig.height = 8.5}
+figure_qad_functions()
+```
+
+\clearpage
+
+### Standard normal distribution
+
+We consider the standard normal distribution $\mathcal{N}(0, 1)$
+  given by $F(x)=\Phi(x)$ with the median value $M=0$.
+Equation\ \@ref(eq:qad-solve) has the following form:
+
+$$
+\Phi(v_p) - \Phi(-v_p) = p.
+$$
+
+Using $\Phi(-v_p) = 1 - \Phi(v_p)$, we get:
+
+$$
+\Phi(v_p) = \frac{p+1}{2},
+$$
+
+which is the same as
+
+$$
+v_p = \Phi^{-1} \Big( \frac{p+1}{2} \Big).
+$$
+
+Thus, if $X \sim \mathcal{N}(0, 1)$,
+
+\begin{equation}
+\lim_{n \to \infty} \E[\QAD(X, p)] = \Phi^{-1} \Big( \frac{p+1}{2} \Big).
+\label{eq:qad-normal}
+\end{equation}
+
+The corresponding plot is presented in Figure\ \@ref(fig:qad-functions)a.
+
+We can use this $\QAD$ function as a reference mental model
+  in which all the assumptions related to the normal distribution are satisfied.
+
+### Standard uniform distribution
+
+We consider the standard uniform distribution $\mathcal{U}(0, 1)$
+  given by $F(x)=x$ on $[0;1]$ with the median value $M=0.5$.
+Equation\ \@ref(eq:qad-solve) has the following form:
+
+$$
+(0.5 + v_p) - (0.5 - v_p) = p,
+$$
+
+which is the same as
+
+$$
+v_p = p / 2.
+$$
+
+Thus, if $X \sim \mathcal{U}(0, 1)$,
+
+$$
+\lim_{n \to \infty} \E[\QAD(X, p)] = \frac{p}{2}.
+$$
+
+The corresponding plot is presented in Figure\ \@ref(fig:qad-functions)b.
+
+Since $\mathcal{U}(0, 1)$ is a continuous unimodal light-tailed distribution,
+  the plot of the asymptotic $\QAD(X, p)$ values is quite similar to the normal one
+  because we have only slight deviations from normality.
+Most of the assumptions related to the normal distributions are approximately satisfied.
+
+\clearpage
+
+### Standard exponential distribution
+
+We consider the standard exponential distribution $\Exp(1)$
+  given by $F(x)=1 - e^{-x}$ with the median value $M=\ln 2$.
+Since $F$ is defined only for $x \geq x_{\min} = 0$, we have to consider two cases: $M - v_p \leq 0$ and $M - v_p > 0$.
+The critical value $v_p^*$ is defined by $v_p^* = M - x_{\min} = \ln 2$.
+From Equation\ \@ref(eq:qad-pstar), we obtain $p^*$:
+
+$$
+p^* = F(2M - x_{\min}) = F(2M) = 1 - e^{-2\ln 2} = 1 - 0.25 = 0.75.
+$$
+
+Let us consider the first case when $p \leq p^* = 0.75$.
+Equation\ \@ref(eq:qad-solve) has the following form:
+
+$$
+(1 - e^{-\ln 2 - v_p}) - (1 + e^{-\ln 2 + v_p}) = p,
+$$
+
+which is the same as
+
+$$
+e^{v_p} - e^{-v_p} = 2p.
+$$
+
+By multiplying both sides of the equation by $e^{v_p}$, we get:
+
+$$
+(e^{v_p})^2 - 2p \cdot (e^{v_p}) - 1 = 0.
+$$
+
+This is a quadratic equation for $e^{v_p}$ with a solution given by
+
+$$
+e^{v_p} = \frac{2p \pm \sqrt{4p^2 + 4}}{2} = p \pm \sqrt{p^2+1}.
+$$
+
+Since $e^{v_p}$ is always positive, only the plus is applicable for $\pm$.
+Taking the natural logarithm from both parts, we get the result:
+
+$$
+v_p = \ln(p + \sqrt{p^2+1}).
+$$
+
+Now let us consider the second case when $p > p^* = 0.75$.
+Equation\ \@ref(eq:qad-solve2) has the following form:
+
+$$
+(1 - e^{-\ln 2 - v_p}) = p,
+$$
+
+which is the same as
+
+$$
+e^{-\ln 2 - v_p} = 1 - p.
+$$
+
+Taking the natural logarithm from both parts, we can express $v_p$:
+
+$$
+v_p = -\ln 2 - \ln (1 - p).
+$$
+
+Thus, if $X \sim \Exp(1)$,
+
+$$
+\lim_{n \to \infty} \E[\QAD(X, p)] = \begin{cases}
+\ln(p + \sqrt{p^2+1}), & \textrm{if}\; p \leq 0.75,\\
+-\ln 2 - \ln (1 - p), & \textrm{if}\; p > 0.75.
+\end{cases}
+$$
+
+The corresponding plot is presented in Figure\ \@ref(fig:qad-functions)c.
+
+This means that within the $75\%$ interval around the median, we can use normal distribution assumptions.
+If we are interested in distribution tails, we need non-parametric approaches.
+
+\clearpage
+
+### Trimodal distribution
+
+The trimodal distribution from Figure\ \@ref(fig:mad-multimodal)a can be described using the following CDF:
+
+$$
+F(x) \in \begin{cases}
+\{ 0.00 \},   & \quad \textrm{if}\, x \leq 0,\\
+(0.00; 0.25), & \quad \textrm{if}\, x \in (0; 1),\\
+\{0.25\},     & \quad \textrm{if}\, x \in [1; 4],\\
+(0.25; 0.50), & \quad \textrm{if}\, x \in (4; 4.5),\\
+\{0.5\}       & \quad \textrm{if}\, x = 4.5,\\
+(0.50; 0.75), & \quad \textrm{if}\, x \in (4.5; 5),\\
+\{0.75\},     & \quad \textrm{if}\, x \in [5; 8],\\
+(0.75; 1.00), & \quad \textrm{if}\, x \in (8; 9),\\
+\{1.00\},     & \quad \textrm{if}\, x \geq 9.\\
+\end{cases}
+$$
+
+Since the median value $M=4.5$, we have:
+
+$$
+v_p \in \begin{cases}
+[0.0; 0.5), & \quad \textrm{if}\, p < 0.5,\\
+(3.5; 4.5), & \quad \textrm{if}\, p > 0.5.
+\end{cases}
+$$
+
+In the point $p = 0.5$, $v_p$ jumps from $0.5$ to $3.5$,
+  which corresponds to a vertical segment in Figure\ \@ref(fig:qad-functions)d.
+That is why $\MAD(X)=\QAD(X, 0.5)$ is so unstable as shown in Figure\ \@ref(fig:mad-multimodal)b.
+
+### Poisson distribution
+
+The CDF of the $\Pois(\lambda)$ distribution is given by:
+
+$$
+F(x) = e^{-\lambda} \sum_{i=0}^{\lfloor x \rfloor} \frac{\lambda^i}{i!}.
+$$
+
+Unfortunately, there is no explicit analytic formula to express
+  the exact quantile values including the median
+  (see [@adell2005; @choi1994] for lower and upper bounds and approximations).
+Therefore, we do not derive the exact equation for the $\QAD$.
+Instead of it, we just highlight the fact that the $\QAD$
+  of a discrete distribution is a piecewise linear function as shown in Figure\ \@ref(fig:qad-functions)e.
+The biggest caveat for using such distributions is that the $\MAD$ value can be zero so
+  we cannot use it as a denominator in various exactions.
+In this case, if we want to continue using the $\QAD$, we should consider higher values of $p$.
+
+### Pareto distribution
+
+We consider the $\Pareto$ distribution
+  given by $F(x)=1-1/x$ with the median value $M=2$.
+Since $F$ is defined only for $x \geq x_{\min} = 1$, we have to consider two cases: $M - v_p \leq 1$ and $M - v_p > 1$.
+The critical value $v_p^*$ is defined by $v_p^* = M - x_{\min} = 1$.
+Now it is easy to get the value of $p^*$ using Equation\ \@ref(eq:qad-pstar):
+
+$$
+p^* = F(2M - x_{\min}) = F(3) = 2/3.
+$$
+
+Let us consider the first case when $p \leq p^* = 2/3$.
+Equation\ \@ref(eq:qad-solve) has the following form:
+
+$$
+\Big( 1 - \frac{1}{2 + v_p} \Big) - \Big( 1 - \frac{1}{2 - v_p} \Big) = p,
+$$
+
+which is the same as
+
+$$
+\frac{1}{2 - v_p} - \frac{1}{2 + v_p} = p.
+$$
+
+By multiplying both sides of this equation on $(2 - v_p)(2 + v_p)$, we get:
+
+$$
+(2 + v_p) - (2 - v_p) = p (2 - v_p)(2 + v_p),
+$$
+
+which is the same as
+
+$$
+\frac{2}{p} v_p = 4 - v_p^2.
+$$
+
+Hence,
+
+$$
+v_p^2 + \frac{2}{p} v_p - 4 = 0.
+$$
+
+This is a quadratic equation for $v_p$ with a solution given by
+
+$$
+v_p = \frac{-2/p \pm \sqrt{4/p^2+16}}{2} = \frac{-1}{p} \pm \sqrt{\frac{1}{p^2} + 4}.
+$$
+
+Since $v_p$ is always positive, only the plus is applicable for $\pm$.
+
+Now let us consider the second case when $p > p^* = 2/3$.
+Equation\ \@ref(eq:qad-solve2) has the following form:
+
+$$
+\Big( 1 - \frac{1}{2 + v_p} \Big) = p,
+$$
+
+which is the same as
+
+$$
+(2+v_p)(1 - p) = 1.
+$$
+
+Hence,
+
+$$
+2 - 2p + v_p - p v_p = 1.
+$$
+
+From this, we can express $v_p$:
+
+$$
+v_p = \frac{2p - 1}{1 - p}.
+$$
+
+Thus, if $X \sim \Pareto$,
+
+$$
+\lim_{n \to \infty} \E[\QAD(X, p)] = \begin{cases}
+\frac{-1}{p} + \sqrt{\frac{1}{p^2} + 4}, & \textrm{if}\; p \leq 2/3,\\
+\frac{2p - 1}{1 - p}, & \textrm{if}\; p > 2/3.
+\end{cases}
+$$
+
+The corresponding plot is presented in Figure\ \@ref(fig:qad-functions)f.
+
+\clearpage
+
+## Asymptotic consistency constants for QAD {#sec:qad-cc}
+
+Let $\QAD_\infty(X, p)$ be an asymptotically consistent estimator
+  for the standard deviation under the normal distribution.
+We define such an estimator as a product of $\QAD(X, p)$ and a consistency constant $K_p$:
+
+$$
+\QAD_\infty(X, p) = K_p \cdot \QAD(X, p) = K_p \cdot \Q(|X - \median(X)|, p).
+$$
+
+Let us assume that $X$ follows the standard normal distribution $\mathcal{N}(0, 1)$.
+Since we want to achieve $\lim_{n \to \infty} \E[\QAD_\infty(X, p)] = 1$, we have
+
+$$
+\lim_{n \to \infty} \E[\QAD(X, p)] = \frac{1}{K_p}.
+$$
+
+Using Equation\ \@ref(eq:qad-normal), we get the exact value for the asymptotic consistency constant value:
+
+\begin{equation}
+K_p = \dfrac{1}{\Phi^{-1}((p+1)/2)}.
+\label{eq:kp}
+\end{equation}
+
+## Asymptotic Gaussian efficiency of QAD {#sec:qad-age}
+
+Let us consider $X$ from the standard normal distribution: $X \sim \mathcal{N}(0, 1)$.
+For the normal model, $\lim_{n \to \infty} \E[\Q(X, 0.5)] = 0$.
+Therefore,
+
+$$
+\lim_{n \to \infty} \QAD_n(X, p) = K_p \cdot Q(|X|, p) = \frac{1}{\Phi^{-1}((p+1)/2)} \cdot Q(|X|, p).
+$$
+
+If $X$ follows the standard normal distribution, $|X|$ follows the standard half-normal distribution.
+The probability density function and the quantile function
+  of the standard half-normal distribution are well-known and given by:
+
+$$
+f_{\operatorname{HN}}(x) = \sqrt{\frac{2}{\pi}} \operatorname{exp}(-x^2/2), \quad
+Q_{\operatorname{HN}}(p) = \Phi^{-1}((p+1)/2).
+$$
+
+The asymptotic variance of the sample quantile estimator for distribution with probability density function $f$
+  and quantile function $Q$ is defined as follows (see [@wilcox2016], 3.5.1):
+
+$$
+\lim_{n \to \infty} \V(Q_n(X, p)) = \dfrac{p(1-p)}{n f(Q(p))^2}.
+$$
+
+Using the definitions of $f_{\operatorname{HN}}$ and $Q_{\operatorname{HN}}$, we get
+
+$$
+\lim_{n \to \infty} \V(\QAD_n(X, p)) = \frac{1}{\big(\Phi^{-1}((p+1)/2)\big)^2} \cdot
+ \frac{\pi p(1-p)}{2n} \cdot \exp\Big(\big(\Phi^{-1}((p+1)/2)\big)^2 \Big).
+$$
+
+The asymptotic variance of the standard deviation estimator is well-known:
+
+$$
+\lim_{n \to \infty} \V(\SD_n) = \frac{1}{2n}.
+$$
+
+Finally, we are ready to draw the equation for the asymptotic Gaussian efficiency of the $\QAD$:
+
+\begin{equation}
+\begin{split}
+\lim_{n \to \infty} e(\QAD_n(X, p),\; \SD_n(X)) =
+  \lim_{n \to \infty} \frac{\V[\SD_n(X)]}{\V[\QAD_n(X, p)]} = \\
+  = \Bigg( \frac{1}{\big(\Phi^{-1}((p+1)/2)\big)^2} \pi p(1-p) \exp\Big(\big(\Phi^{-1}((p+1)/2)\big)^2 \Big) \Bigg)^{-1} = \\
+  = \frac{\big(\Phi^{-1}((p+1)/2)\big)^2}{\pi p(1-p) \exp\Big(\big(\Phi^{-1}((p+1)/2)\big)^2 \Big)}.
+\end{split}
+\label{eq:qad-asympt-eff}
+\end{equation}
+
+Using Equation\ \@ref(eq:qad-asympt-eff), we can obtain the exact value of the $\MAD$ Gaussian efficiency
+  by putting $p = 0.5$:
+
+$$
+\begin{split}
+\lim_{n \to \infty} e(\MAD_n(X),\; \SD_n(X)) & \approx 0.367522937595603 \approx 36.75\%.
+\end{split}
+$$
+
+The plot of the asymptotic Gaussian efficiency function for all values
+  $p \in [0; 1]$ is shown in Figure\ \@ref(fig:qad-efficiency).
+
+```{r qad-efficiency, fig.cap="Asymptotic Gaussian efficiency of QAD(X, p)."}
+figure_qad_efficiency()
+```
+
+We can see that the presented function is unimodal with a single maximum point.
+Let us denote the location of this point as $\rho_o$.
+This value can be obtained numerically:
+
+\begin{equation}
+\rho_o \approx 0.861678977787423 \approx 86.17\%.
+\label{eq:po}
+\end{equation}
+
+If we are looking for a specific value of $p$ to get
+  a single measure of dispersion in order to use it as a robust estimator of the standard deviation,
+  it does not make sense to consider $\QAD(X, p)$ for $p > \rho_o$.
+Indeed, such an estimator is worse than $\QAD(X, \rho_o)$
+  in terms of the Gaussian efficiency and breakdown point at the same time.
+Meanwhile, it also does not make sense to consider $p < 0.5$ since
+  $50\%$ is the best possible breakdown point of a scale estimator (see [@rousseeuw1987, p14]).
+Therefore, we consider only $p \in [0.5; \rho_o]$.
+
+\clearpage
+
+## Standard quantile absolute deviation {#sec:qad-sqad}
+
+Manual observing of the $\QAD(X, p)$ values for all $p$ is not always convenient.
+It is better to have a rule of thumb for choosing such a value of $p$ that gives us desirable properties
+  of the corresponding measure of dispersion.
+The $\MAD$ approach suggests using $p=0.5$ since it gives the highest breakdown point of $50\%$.
+However, such robustness is not always required in practice.
+If the desired breakdown point is below $50\%$, it is reasonable to increase the target value of $p$ and
+  trade some robustness for statistical efficiency.
+
+The first rule of thumb we want to suggest is using the following value of $p$:
+
+$$
+\rho_s = \Phi(1) - \Phi(-1) \approx 0.682689492137086 \approx 68.27\%.
+$$
+
+The intuition behind this value is as follows.
+If we assume only slight deviations from normality and obtain an estimation for the standard deviation $\sigma$,
+  we may also expect that the interval $[\mu-\sigma; \mu+\sigma]$ is not so distorted
+  compared to the normal distribution.
+The portion of the normal distribution covered by this interval is exactly $\rho_s = \Phi(1) - \Phi(-1)$.
+Therefore, the maximum asymptotic gross error percentage that does not corrupt $[\mu-\sigma; \mu+\sigma]$ is
+  $1-\rho_s \approx 31.73\%$, which can be considered as the target breakdown point.
+
+Let us denote the corresponding measure of dispersion by the *standard quantile absolute deviation* or the $\SQAD$.
+Asymptotically, it can be defined as follows:
+
+$$
+\SQAD_\infty(X) = K_{\rho_s} \cdot \QAD(X, \rho_s),
+$$
+
+From \@ref(eq:kp), the asymptotic consistency constant $K_{\rho_s} = 1$ so
+  the $\QAD(X, \rho_s)$ is an unbiased consistent estimator for the standard deviation under normality.
+Although, for finite samples, we need bias-correction factors:
+
+$$
+\SQAD_n(X) = K_{s,n} \cdot \QAD(X, \rho_s),
+$$
+
+where $K_{s,n}$ is a finite-sample consistency constant for the $\SQAD$.
+We obtain the $K_{s,n}$ values in Section\ \@ref(sec:sim-constants).
+
+The asymptotic Gaussian efficiency of the $\SQAD$ can be obtained using Equation\ \@ref(eq:qad-asympt-eff):
+
+$$
+\lim_{n \to \infty} e(\SQAD_n(X),\; \SD_n(X)) \approx 0.540565062173643 \approx 54.06\%.
+$$
+
+## Optimal quantile absolute deviation {#sec:qad-oqad}
+
+When the expected portion of gross errors is less than $\rho_o \approx 86.17\%$ (given by Equation\ \@ref(eq:po)),
+  it makes sense to use $\QAD(X, \rho_o)$ since it gives the highest possible value of Gaussian efficiency.
+Let us denote it by the *optimal quantile absolute deviation* or the $\OQAD$.
+Here is the asymptotic expression for this measure:
+
+$$
+\OQAD_\infty(X) = K_{\rho_o} \cdot \QAD(X, \rho_o),
+$$
+
+From \@ref(eq:kp), the asymptotic consistency constant $K_{\rho_o} \approx 0.6747309$.
+For finite samples, we need constant adjustments:
+
+$$
+\OQAD_n(X) = K_{o,n} \cdot \QAD(X, \rho_s),
+$$
+
+where $K_{o,n}$ is a finite-sample consistency constant for the $\OQAD$.
+We obtain the $K_{o,n}$ values in Section\ \@ref(sec:sim-constants).
+
+The asymptotic breakdown point of the $\OQAD$ is $1-\rho_o \approx 13.83\%$.
+The asymptotic Gaussian efficiency of the $\OQAD$ can be obtained using Equation\ \@ref(eq:qad-asympt-eff):
+
+$$
+\lim_{n \to \infty} e(\OQAD_n(X),\; \SD_n(X)) \approx 0.652244854073207 \approx 64.22\%.
+$$
+
+\clearpage
+
+# Trimmed Harrell-Davis median estimator {#sec:thdme}
+
+One of the straightforward insights that is provided by the $\QAD$ is that the interval
+  $[\median(X) - \QAD(X, p); \median(X) + \QAD(X, p)]$ covers $p \cdot 100\%$ of the distribution.
+Since the asymptotic breakdown point of $\QAD(X, p)$ is $1-p$, it makes sense to consider a complimentary median estimator
+  which also has the asymptotic breakdown point of $1-p$, but higher Gaussian efficiency.
+We suggest using the trimmed Harrell-Davis quantile estimator based
+  on the highest density interval of the given width (see [@akinshin2022thdqe]).
+
+The classic Harrell-Davis quantile estimator (see [@harrell1982]) is defined as follows:
+
+$$
+Q_{\operatorname{HD}}(X, q) = \sum_{i=1}^{n} W_{\operatorname{HD},i} \cdot X_{(i)},\quad
+W_{\operatorname{HD},i} = I_{i/n}(\alpha, \beta) - I_{(i-1)/n}(\alpha, \beta),
+$$
+
+where $I_u(\alpha, \beta)$ is the regularized incomplete beta function,
+  $\alpha = (n+1)q$, $\;\beta = (n+1)(1-q)$.
+This approach suggests estimating quantiles as a weighted sum of order statistics.
+While $Q_{\operatorname{HD}}$ has higher Gaussian efficiency than the sample quantiles,
+  its breakdown point is zero.
+However, most of the $W_{\operatorname{HD},i}$ are negligible:
+  their actual impact on the Gaussian efficiency is low, but they significantly decrease the breakdown point.
+When we switch to the trimmed modification of this estimator,
+  we perform summation only within the highest density interval $[L;R]$ of $\operatorname{Beta}(\alpha, \beta)$
+  of size $D$:
+
+$$
+Q_{\operatorname{THD},D}(X, q) = \sum_{i=1}^{n} W_{\operatorname{THD},D,i} \cdot X_{(i)}, \quad
+W_{\operatorname{THD},D,i} = F_{\operatorname{THD},D}(i / n) - F_{\operatorname{THD},D}((i - 1) / n),
+$$
+
+$$
+F_{\operatorname{THD},D}(u) = \begin{cases}
+0 & \textrm{for }\, u < L,\\
+\big( I_u(\alpha, \beta) - I_L(\alpha, \beta) \big) /
+\big( I_R(\alpha, \beta) \big) - I_L(\alpha, \beta) \big) \big)
+  & \textrm{for }\, L \leq u \leq R,\\
+1 & \textrm{for }\, R < u.
+\end{cases}
+$$
+
+Thus, we use only sample elements with the highest weight coefficients $W_{\operatorname{THD},D,i}$ and
+  ignore sample elements with small weight coefficients.
+This allows us to get a customizable trade-off between the breakdown point and the Gaussian efficiency.
+When we consider the median estimator $Q_{\operatorname{THD},D}(0.5)$, we have $\alpha=\beta=(n+1)/2$,
+  and the highest density interval $[L;R]$ is just $[0.5-p/2; 0.5+p/2]$.
+Thus, we get the following form for the *trimmed Harrell-Davis median estimator* $\THDME_p$:
+
+$$
+\THDME_p(X) =
+Q_{\operatorname{THD},p}(X, 0.5) = \sum_{i=1}^{n} W_{\operatorname{THDM},p,i} \cdot X_{(i)}, \quad
+W_{\operatorname{THDM},p,i} = F_{\operatorname{THDM},p}(i / n) - F_{\operatorname{THDM},p}((i - 1) / n),
+$$
+
+$$
+F_{\operatorname{THDM,p}}(u) = \begin{cases}
+0 & \textrm{for }\, u < 0.5 - p/2,\\
+\dfrac{ I_u(\frac{n+1}{2}, \frac{n+1}{2}) - I_{0.5-p/2}(\frac{n+1}{2}, \frac{n+1}{2}) }{I_{0.5+p/2}(\frac{n+1}{2}, \frac{n+1}{2}) - I_{0.5-p/2}(\frac{n+1}{2}, \frac{n+1}{2})}
+  & \textrm{for }\, 0.5-p/2 \leq u \leq 0.5+p/2,\\
+1 & \textrm{for }\, 0.5+p/2 < u.
+\end{cases}
+$$
+
+For the $\SQAD$, we consider the *standard trimmed Harrell-Davis median estimator* ($\STHDME$) given by:
+
+$$
+\STHDME(X) = \THDME_{\rho_s}(X).
+$$
+
+For the $\OQAD$, we consider the *optimal trimmed Harrell-Davis median estimator* ($\OTHDME$) given by:
+
+$$
+\OTHDME(X) = \THDME_{\rho_o}(X).
+$$
+
+\clearpage
+
+# Simulation studies {#sec:sim}
+
+In this section, we perform several simulations studies in order to obtain
+  the finite-sample consistency constants for the $\SQAD$ and the $\OQAD$ (Section\ \@ref(sec:sim-constants)),
+  the finite-sample Gaussian efficiency values of the $\MAD$, the $\SQAD$, and the $\OQAD$ (Section\ \@ref(sec:sim-scale-efficiency)),
+  and the finite-sample Gaussian efficiency of the $\STHDME$ and the $\OTHDME$ (Section\ \@ref(sec:sim-location-efficiency)).
+
+## Simulation 1: The finite-sample consistency constants for the SQAD and the OQAD {#sec:sim-constants}
+
+Since $K_{s,n} = 1/\E[\SQAD(X)]$ and $K_{o,n} = 1/\E[\OQAD(X)]$,
+  the values of the finite-sample consistency constants for the $\SQAD$ and the $\OQAD$ can be obtained
+  by estimating the expected value of $\SQAD(X)$ and $\OQAD(X)$ using the Monte-Carlo method.
+We do it according to the following scheme:
+
+\begin{algorithm}[H]
+\ForEach{$n \in \{ 2..100, \ldots, `r format_int_latex(max(settings$constants$ns))` \}$}{
+  $\textit{repetitions} \gets `r format_int_latex(settings$constants$repetitions)`$\\
+  \For{$i \gets 1..\textit{repetitions}$}{
+        $x \gets \textrm{GenerateRandomSample}(\textrm{Distribution} = \mathcal{N}(0, 1),\, \textrm{SampleSize} = n)$\\
+        $y_{\SQAD,i} \gets \textrm{SQAD}(x)$\\
+        $y_{\OQAD,i} \gets \textrm{OQAD}(x)$
+  }
+  $K_{s,n} \gets 1 / (\sum y_{\SQAD,i} / \textit{repetitions})$\\
+  $K_{o,n} \gets 1 / (\sum y_{\OQAD,i} / \textit{repetitions})$
+}
+\end{algorithm}
+
+In order to estimate the $\SQAD$ and the $\OQAD$,
+  we use the sample median and the traditional Hyndman-Fan Type 7 quantile estimator
+  in order to make the presented results more generic.
+If the $\STHDME$ and the $\OTHDME$ are used to estimate the median,
+  the consistency constant may require some adjustments.
+
+The estimated $K_{s,n},\, K_{o,n}$ values are presented in Table\ \@ref(tab:tab-constants).
+The corresponding plots for $2 \leq n \leq 100$
+  are shown in Figure\ \@ref(fig:fig-sqad-constants)a and Figure\ \@ref(fig:fig-oqad-constants)a.
+
+Following the approach from [@hayes2014],
+  we are going to draw generic $K_n$ equations for $n > 100$ in the following form:
+
+$$
+K_n = K_{\infty} (1 + \alpha n^{-1} + \beta n^{-2}),
+$$
+
+where $K_{\infty}$ is the corresponding asymptotic consistency constant.
+
+Using least squares on the values Table\ \@ref(tab:tab-constants) for $100 \leq n \leq 1000$,
+  we can obtain approximated values of $\alpha$ and $\beta$,
+  which gives us the following equations for $K_{s,n}$ ($K_{\rho_s} = 1$ as shown in Section\ \@ref(sec:qad-sqad)):
+
+$$
+K_{s,n} \approx 1 +
+  `r format(round(get_bias_coefficients("sqad")[1], 3), scientific=FALSE)` n^{-1} +
+  `r format(round(get_bias_coefficients("sqad")[2], 3), scientific=FALSE)` n^{-2}.
+$$
+
+Using the same approach, we obtain the corresponding equation for $K_{o,n}$
+  ($K_{\rho_o} \approx 0.6747309$ as shown in Section\ \@ref(sec:qad-oqad)):
+
+$$
+K_{o,n} \approx 0.6747309 \cdot (1 +
+  `r format(round(get_bias_coefficients("oqad")[1], 3), scientific=FALSE)` n^{-1} +
+  `r format(round(get_bias_coefficients("oqad")[2], 3), scientific=FALSE)` n^{-2}).
+$$
+
+The actual and predicted values of $K_{s,n},\, K_{o,n}$
+  for $100 < n \leq `r format_int_latex(max(settings$constants$ns))`$
+  are shown in Figure\ \@ref(fig:fig-sqad-constants)b and Figure\ \@ref(fig:fig-oqad-constants)b respectively.
+The obtained values of $\alpha$ and $\beta$ look quite accurate:
+  the maximum observed absolute difference between the actual and predicted values
+  is $\approx `r format(inline_constant_diff("sqad"), scientific=FALSE)`$ for the $\SQAD$
+  and $\approx `r format(inline_constant_diff("oqad"), scientific=FALSE)`$ for the $\OQAD$.
+
+\clearpage
+
+```{r tab-constants}
+table_constants()
+```
+
+\clearpage
+
+```{r fig-sqad-constants, fig.cap="Finite-sample consistency constants for the SQAD.", fig.height=8.5}
+figure_sqad_constants()
+```
+
+\clearpage
+
+```{r fig-oqad-constants, fig.cap="Finite-sample consistency constants for the OQAD.", fig.height=8.5}
+figure_oqad_constants()
+```
+
+\clearpage
+
+## Simulation 2: The finite-sample Gaussian efficiency values for the MAD, the SQAD, and the OQAD {#sec:sim-scale-efficiency}
+
+In this simulation study, we evaluate the finite-sample Gaussian efficiency of $\MAD$, $\SQAD$, and $\OQAD$.
+As for the baseline, we consider the unbiased standard deviation $\SD_n$ of the normal distribution:
+
+$$
+\SD_n(X) = \sqrt{\frac{1}{n} \sum_{i=1}^n (X_i - \bar{X})^2} \bigg/ c_4(n), \quad
+c_4(n) = \sqrt{\frac{2}{n-1}}\frac{\Gamma(\frac{n}{2})}{\Gamma(\frac{n-1}{2})}.
+$$
+
+For an unbiased scale estimator $T_n$, the Gaussian efficiency is defined as follows:
+
+\begin{equation}
+e(T_n) = \frac{\V[\SD_n]}{\V[T_n]}.
+\label{eq:dispersion-efficiency}
+\end{equation}
+
+We also consider the concept of the *standardized asymptotic variance* of a scale estimator which was
+  proposed in [@daniell1920] and advocated in [@rousseeuw1993, p1276], [@bickel1976, p502], and [@huber2009, p3]:
+
+\begin{equation}
+\V_s[T_n] = \frac{n \cdot \V[T_n]}{\E[T_n]^2}
+\label{eq:svar}
+\end{equation}
+
+We suggest overriding Equation\ \@ref(eq:dispersion-efficiency) using $\V_s$:
+
+\begin{equation}
+e(T_n) = \frac{\V_s[\SD_n]}{\V_s[T_n]}.
+\label{eq:dispersion-efficiency2}
+\end{equation}
+
+Equations\ \@ref(eq:dispersion-efficiency) and \@ref(eq:dispersion-efficiency2) are equivalent for unbiased estimators
+  since $\E[T_n] = 1$.
+However, we operate only with approximations of the consistency constants
+  for the $\MAD$ (see [@park2020]), the $\SQAD$ and the $\OQAD$ (see Table\ \@ref(tab:tab-constants)).
+The difference between the actual and approximated values
+  of the consistency constants is almost negligible in practice,
+  but it still introduces minor errors.
+In order to slightly improve the accuracy of the estimated Gaussian efficiency values, we prefer using
+  Equation\ \@ref(eq:dispersion-efficiency2) in our calculations.
+
+We perform the simulation using the Monte-Carlo method according to the following scheme:
+
+\begin{algorithm}[H]
+\ForEach{$n \in \{  2..100, \ldots, `r format_int_latex(max(settings$scale_efficiency$ns))` \}$}{
+  $\textit{repetitions} \gets `r format_int_latex(settings$scale_efficiency$repetitions)`$\\
+  \For{$i \gets 1..\textit{repetitions}$}{
+    $x \gets \textrm{GenerateRandomSample}(\textrm{Distribution} = \mathcal{N}(0, 1),\, \textrm{SampleSize} = n)$\\
+    $y_{\SD,i} = \SD_n(x)$\\
+    $y_{\MAD,i} = \MAD_n(x)$\\
+    $y_{\SQAD,i} = \SQAD_n(x)$\\
+    $y_{\OQAD,i} = \OQAD_n(x)$\\
+  }
+  $e(\MAD_n) = \V_s(y_{\SD,\{i\}}) / \V_s(y_{\MAD,\{i\}})$\\
+  $e(\SQAD_n) = \V_s(y_{\SD,\{i\}}) / \V_s(y_{\SQAD,\{i\}})$\\
+  $e(\OQAD_n) = \V_s(y_{\SD,\{i\}}) / \V_s(y_{\OQAD,\{i\}})$\\
+}
+\end{algorithm}
+
+The estimated Gaussian efficiency values are presented in Table\ \@ref(tab:tab-scale-efficiency).
+The corresponding plots for $n \leq 100$ and $n \leq 1000$ are shown in Figure\ \@ref(fig:fig-scale-efficiency).
+
+As we can see, the $\SQAD$ and the $\OQAD$ are not only asymptotically more efficient than $\MAD$,
+  but they are also more efficient for finite samples.
+Thus, if the breakdown point of $31.73\%$ is acceptable,
+  the $\SQAD$ is preferable to the $\MAD$.
+If the breakdown point of $13.83\%$ is acceptable,
+  the $\OQAD$ is preferable to the $\MAD$ and the $\SQAD$
+  since it gives the highest Gaussian efficiency among all $\QAD(X, p)$ estimators.
+For a custom breakdown point, one can choose an appropriate value of $p$
+  and perform a similar simulation in order to obtain the corresponding consistency constants for $\QAD(X, p)$.
+
+\clearpage
+
+```{r tab-scale-efficiency}
+table_scale_efficiency()
+```
+
+\clearpage
+
+```{r fig-scale-efficiency, fig.cap="Finite-sample Gaussian efficiency of MAD, SQAD, OQAD.", fig.height=8.5}
+figure_scale_efficiency()
+```
+
+\clearpage
+
+## Simulation 3: The finite-sample Gaussian efficiency of the standard trimmed Harrell-Davis median estimator {#sec:sim-location-efficiency}
+
+In this simulation study, we evaluate the relative statistical efficiency
+  of the sample median ($SM_n$),
+  the standard and optimal trimmed Harrell-Davis median estimators ($\STHDME_n$, $\OTHDME_n$)
+  to the mean ($\mean_n$) under the normal distribution.
+We call it the Gaussian efficiency of a location estimator or just the Gaussian efficiency
+  which will not introduce any confusion with the Gaussian efficiency of scale estimators.
+
+The $\SM_n$ is defined the traditional way as the middle order statistic or the sum of two middle order statistics
+  depending on the parity of $n$:
+
+$$
+\SM_n(X) = \begin{cases}
+X_{((n+1)/2)}, \quad & \textrm{if}\; n\; \textrm{is odd},\\
+\dfrac{X_{(n/2)} + X_{(n/2+1)}}{2}, \quad & \textrm{if}\; n\; \textrm{is even}.
+\end{cases}
+$$
+
+The $\mean_n$ is just the arithmetic average:
+
+$$
+\mean_n(X) = \frac{X_1 + X_2 + \ldots + X_n}{n}.
+$$
+
+The definitions of $\STHDME_n$ and $\OTHDME_n$ are taken from Section\ \@ref(sec:thdme).
+
+We evaluate the Gaussian efficiency of an unbiased location estimator $T_n$
+  as a ratio between variances of $\mean_n$ (the baseline) and $T_n$:
+
+\begin{equation}
+e(T_n) = \frac{\V[\mean_n]}{\V[T_n]}.
+\end{equation}
+
+We perform the simulation using the Monte-Carlo method according to the following scheme:
+
+\begin{algorithm}[H]
+\ForEach{$n \in \{  2..100, \ldots, `r format_int_latex(max(settings$location_efficiency$ns))` \}$}{
+  $\textit{repetitions} \gets `r format_int_latex(settings$location_efficiency$repetitions)`$\\
+  \For{$i \gets 1..\textit{repetitions}$}{
+    $x \gets \textrm{GenerateRandomSample}(\textrm{Distribution} = \mathcal{N}(0, 1),\, \textrm{SampleSize} = n)$\\
+    $y_{\mean,i} = \mean_n(x)$\\
+    $y_{\SM,i} = \SM_n(x)$\\
+    $y_{\STHDME,i} = \STHDME_n(x)$\\
+    $y_{\OTHDME,i} = \OTHDME_n(x)$\\
+  }
+  $e(\SM_n) = \V(y_{\mean,\{i\}}) / \V(y_{\SM,\{i\}})$\\
+  $e(\STHDME_n) = \V(y_{\mean,\{i\}}) / \V(y_{\STHDME,\{i\}})$\\
+  $e(\OTHDME_n) = \V(y_{\mean,\{i\}}) / \V(y_{\OTHDME,\{i\}})$\\
+}
+\end{algorithm}
+
+The estimated Gaussian efficiency values are presented in Table\ \@ref(tab:tab-location-efficiency).
+The corresponding plots for $n \leq 100$ and $100 < n \leq 10\,000$
+  are shown in Figure\ \@ref(fig:fig-location-efficiency).
+
+As we can see, the $\STHDME_n$ and the $\OTHDME_n$ are noticeably more efficient than the $\SM$.
+This makes the $\STHDME_n$ and $\OTHDME_n$ preferable option compared to $\SM_n$
+  when it is used together with the $\SQAD_n$ and the $\OQAD_n$ respectively
+  because they have identical breakdown points.
+
+It is also worth mentioning that the finite-sample Gaussian efficiency values of the $\STHDME_n$ and the $\OTHDME_n$
+  are almost equal, the difference is negligible (especially for $n > 20$).
+
+\clearpage
+
+```{r tab-location-efficiency}
+table_location_efficiency()
+```
+
+\clearpage
+
+```{r fig-location-efficiency, fig.cap="Finite-sample Gaussian efficiency of SM, STHDME, OTHDME.", fig.height=8.5}
+figure_location_efficiency()
+```
+
+\clearpage
+
+# Summary {#sec:summary}
+
+In this paper, we have introduced
+  the *quantile absolute deviation around the median* ($\QAD$) which is
+  a generalization of the *median absolute deviation around the median* ($\MAD$).
+For a finite sample $X$ of size $n$ it is defined as follows:
+
+$$
+\QAD_n(X, p) = K_{p,n} \Q(|X - \median(X)|, p),
+$$
+
+where $K_{p,n}$ is a consistency constant.
+The parameter $p$ allows us not only to get a broad perspective on the dispersion behavior in the non-parametric case,
+  but also customize the trade-off between the breakdown point (which is $1-p$) and the Gaussian efficiency.
+In addition to the $\MAD_n(X)$ which is $\QAD_n(X, 0.5)$, we have introduced two rule of thumbs for choosing $p$.
+More specifically, we have considered the standard $\QAD$ ($\SQAD$) and the optimal $\QAD$ ($\OQAD$):
+
+$$
+\begin{split}
+\SQAD(X) = \QAD(X, \rho_s), \quad \rho_s \approx 0.6827,\\
+\OQAD(X) = \QAD(X, \rho_o), \quad \rho_o \approx 0.8617.
+\end{split}
+$$
+
+The asymptotic properties of the $\MAD$, the $\SQAD$, and the $\OQAD$ are presented in Table\ \@ref(tab:summary).
+
+Table: (\#tab:summary) Approximated asymptotic properties of considered dispersion estimator.
+
+| Estimator | Breakdown point | Gaussian efficiency | Consistency constant |
+|----------:|----------------:|--------------------:|---------------------:|
+| $\MAD$    | 50.00%          |              36.75% |             1.482602 |
+| $\SQAD$   | 31.73%          |              54.06% |             1.000000 |
+| $\OQAD$   | 13.83%          |              65.22% |             0.674731 |
+
+We also suggest using the trimmed Harrell-Davis median estimator $\THDME_p$
+  as a complimentary median estimator for $\QAD(X, p)$ since it has the same asymptotic breakdown point.
+Various $\QAD(X, p)$ dispersion estimators including the $\SQAD$ and the $\OQAD$
+  can be reasonable replacements for the $\MAD$ when the breakdown point of $50\%$ is not required.
+
+# Disclosure statement {-}
+
+The author reports there are no competing interests to declare.
+
+# Data and source code availability {-}
+
+The source code of this paper, the source code of all simulations,
+  and the simulation results are available on GitHub:
+  [https://github.com/AndreyAkinshin/paper-qad](https://github.com/AndreyAkinshin/paper-qad).
+
+# Acknowledgments {-}
+
+The author thanks Ivan Pashchenko for valuable discussions.
+
+\clearpage
+
+# (APPENDIX) Appendix {-}
+
+# Reference implementation {#sec:refimpl}
+
+Here is an R implementation of the $\QAD$, the $\SQAD$, and the $\OQAD$:
+
+```{r, file="reference-implementation-qad.R", echo=TRUE}
+```
+
+\clearpage
+
+And here is an R implementation of the $\THDME$, the $\STHDME$, and the $\OTHDME$:
+
+```{r, file="reference-implementation-thdme.R", echo=TRUE}
+```
+
+\clearpage
+
+# References
