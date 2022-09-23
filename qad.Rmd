@@ -1076,8 +1076,8 @@ We do it according to the following scheme:
         $y_{\SQAD,i} \gets \textrm{SQAD}(x)$\\
         $y_{\OQAD,i} \gets \textrm{OQAD}(x)$
   }
-  $K_{s,n} \gets 1 / (\sum y_{\SQAD,i} / \textit{repetitions})$\\
-  $K_{o,n} \gets 1 / (\sum y_{\OQAD,i} / \textit{repetitions})$
+  $K_{s,n} \gets 1 \;/\; (\sum y_{\SQAD,i} / \textit{repetitions})$\\
+  $K_{o,n} \gets 1 \;/\; (\sum y_{\OQAD,i} / \textit{repetitions})$
 }
 \end{algorithm}
 
@@ -1196,14 +1196,14 @@ We perform the simulation using the Monte-Carlo method according to the followin
   $\textit{repetitions} \gets `r format_int_latex(settings$scale_efficiency$repetitions)`$\\
   \For{$i \gets 1..\textit{repetitions}$}{
     $x \gets \textrm{GenerateRandomSample}(\textrm{Distribution} = \mathcal{N}(0, 1),\, \textrm{SampleSize} = n)$\\
-    $y_{\SD,i} = \SD_n(x)$\\
-    $y_{\MAD,i} = \MAD_n(x)$\\
-    $y_{\SQAD,i} = \SQAD_n(x)$\\
-    $y_{\OQAD,i} = \OQAD_n(x)$\\
+    $y_{\SD,i} \gets \SD_n(x)$\\
+    $y_{\MAD,i} \gets \MAD_n(x)$\\
+    $y_{\SQAD,i} \gets \SQAD_n(x)$\\
+    $y_{\OQAD,i} \gets \OQAD_n(x)$\\
   }
-  $e(\MAD_n) = \V_s(y_{\SD,\{i\}}) / \V_s(y_{\MAD,\{i\}})$\\
-  $e(\SQAD_n) = \V_s(y_{\SD,\{i\}}) / \V_s(y_{\SQAD,\{i\}})$\\
-  $e(\OQAD_n) = \V_s(y_{\SD,\{i\}}) / \V_s(y_{\OQAD,\{i\}})$\\
+  $e(\MAD_n) \gets \V_s(y_{\SD,\{i\}}) \;/\; \V_s(y_{\MAD,\{i\}})$\\
+  $e(\SQAD_n) \gets \V_s(y_{\SD,\{i\}}) \;/\; \V_s(y_{\SQAD,\{i\}})$\\
+  $e(\OQAD_n) \gets \V_s(y_{\SD,\{i\}}) \;/\; \V_s(y_{\OQAD,\{i\}})$\\
 }
 \end{algorithm}
 
@@ -1275,14 +1275,14 @@ We perform the simulation using the Monte-Carlo method according to the followin
   $\textit{repetitions} \gets `r format_int_latex(settings$location_efficiency$repetitions)`$\\
   \For{$i \gets 1..\textit{repetitions}$}{
     $x \gets \textrm{GenerateRandomSample}(\textrm{Distribution} = \mathcal{N}(0, 1),\, \textrm{SampleSize} = n)$\\
-    $y_{\mean,i} = \mean_n(x)$\\
-    $y_{\SM,i} = \SM_n(x)$\\
-    $y_{\STHDME,i} = \STHDME_n(x)$\\
-    $y_{\OTHDME,i} = \OTHDME_n(x)$\\
+    $y_{\mean,i} \gets \mean_n(x)$\\
+    $y_{\SM,i} \gets \SM_n(x)$\\
+    $y_{\STHDME,i} \gets \STHDME_n(x)$\\
+    $y_{\OTHDME,i} \gets \OTHDME_n(x)$\\
   }
-  $e(\SM_n) = \V(y_{\mean,\{i\}}) / \V(y_{\SM,\{i\}})$\\
-  $e(\STHDME_n) = \V(y_{\mean,\{i\}}) / \V(y_{\STHDME,\{i\}})$\\
-  $e(\OTHDME_n) = \V(y_{\mean,\{i\}}) / \V(y_{\OTHDME,\{i\}})$\\
+  $e(\SM_n) \gets \V(y_{\mean,\{i\}}) \;/\; \V(y_{\SM,\{i\}})$\\
+  $e(\STHDME_n) \gets \V(y_{\mean,\{i\}}) \;/\; \V(y_{\STHDME,\{i\}})$\\
+  $e(\OTHDME_n) \gets \V(y_{\mean,\{i\}}) \;/\; \V(y_{\OTHDME,\{i\}})$\\
 }
 \end{algorithm}
 
